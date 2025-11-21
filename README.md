@@ -69,7 +69,7 @@ A built-in AI chat allows users to:
 
 * Get resume tips and feedback
 
-🔌 5. Dual LLM Provider Support
+### 🔌 5. Dual LLM Provider Support
 
 You can choose between:
 
