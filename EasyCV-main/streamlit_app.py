@@ -65,8 +65,14 @@ PROVIDER_GEMINI = "Gemini"
 def get_openai_client():
     try:
         from openai import OpenAI
-        api_key = os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "$env:GOOGLE_API_KEY"))
+        # Try environment variable first, then Streamlit secrets
+        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
+            try:
+                api_key = st.secrets.get("OPENAI_API_KEY", "")
+            except (AttributeError, KeyError, FileNotFoundError):
+                api_key = ""
+        if not api_key or api_key.strip() == "":
             return None
         return OpenAI(api_key=api_key)
     except Exception:
@@ -76,8 +82,14 @@ def get_openai_client():
 def get_gemini_client():
     try:
         import google.generativeai as genai
-        api_key = os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", ""))
+        # Try environment variable first, then Streamlit secrets
+        api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
+            try:
+                api_key = st.secrets.get("GOOGLE_API_KEY", "")
+            except (AttributeError, KeyError, FileNotFoundError):
+                api_key = ""
+        if not api_key or api_key.strip() == "":
             return None
         genai.configure(api_key=api_key)
         return genai
@@ -91,7 +103,7 @@ def call_llm(provider, model, system_prompt, user_prompt, history=None):
     if provider == PROVIDER_OPENAI:
         client = get_openai_client()
         if client is None:
-            raise RuntimeError("OpenAI client not available. Add OPENAI_API_KEY to secrets.")
+            raise RuntimeError("OpenAI client not available. Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
         # Convert to Chat Completions
         messages = []
         if system_prompt:
@@ -100,26 +112,38 @@ def call_llm(provider, model, system_prompt, user_prompt, history=None):
             if m["role"] in ("user", "assistant"):
                 messages.append({"role": m["role"], "content": m["content"]})
         messages.append({"role": "user", "content": user_prompt})
-        resp = client.chat.completions.create(model=model, messages=messages, temperature=0.7)
-        return resp.choices[0].message.content
+        try:
+            resp = client.chat.completions.create(model=model, messages=messages, temperature=0.7)
+            return resp.choices[0].message.content
+        except Exception as e:
+            error_msg = str(e)
+            if "authentication" in error_msg.lower() or "api key" in error_msg.lower() or "invalid" in error_msg.lower():
+                raise RuntimeError("Authentication failed. Please check that your OPENAI_API_KEY in Streamlit Cloud secrets is valid and not expired.")
+            raise
 
     elif provider == PROVIDER_GEMINI:
         genai = get_gemini_client()
         if genai is None:
-            raise RuntimeError("Gemini client not available. Add GOOGLE_API_KEY to secrets.")
+            raise RuntimeError("Gemini client not available. Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
         # Build a single prompt (Gemini can accept system in content)
-        model_obj = genai.GenerativeModel(model)
-        # Convert history into parts
-        conv = []
-        if system_prompt:
-            conv.append({"role": "user", "parts": [f"SYSTEM:\n{system_prompt}"]})
-        for m in history:
-            role = "user" if m["role"] == "user" else "model"
-            conv.append({"role": role, "parts": [m["content"]]})
-        conv.append({"role": "user", "parts": [user_prompt]})
-        chat = model_obj.start_chat(history=conv)
-        resp = chat.send_message("Please respond to the last user message only.")
-        return resp.text
+        try:
+            model_obj = genai.GenerativeModel(model)
+            # Convert history into parts
+            conv = []
+            if system_prompt:
+                conv.append({"role": "user", "parts": [f"SYSTEM:\n{system_prompt}"]})
+            for m in history:
+                role = "user" if m["role"] == "user" else "model"
+                conv.append({"role": role, "parts": [m["content"]]})
+            conv.append({"role": "user", "parts": [user_prompt]})
+            chat = model_obj.start_chat(history=conv)
+            resp = chat.send_message("Please respond to the last user message only.")
+            return resp.text
+        except Exception as e:
+            error_msg = str(e)
+            if "authentication" in error_msg.lower() or "api key" in error_msg.lower() or "invalid" in error_msg.lower():
+                raise RuntimeError("Authentication failed. Please check that your GOOGLE_API_KEY in Streamlit Cloud secrets is valid and not expired.")
+            raise
 
     else:
         raise ValueError("Unknown provider")
@@ -160,12 +184,28 @@ with st.sidebar:
     provider = st.radio("Provider", [PROVIDER_OPENAI, PROVIDER_GEMINI], index=0)
     if provider == PROVIDER_OPENAI:
         model = st.text_input("OpenAI Model", value="gpt-4o-mini")
-        key_ok = bool(os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "")))
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            try:
+                api_key = st.secrets.get("OPENAI_API_KEY", "")
+            except (AttributeError, KeyError, FileNotFoundError):
+                api_key = ""
+        key_ok = bool(api_key and api_key.strip())
         st.caption("🔑 OPENAI_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
+        if not key_ok:
+            st.warning("⚠️ Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
     else:
         model = st.text_input("Gemini Model", value="gemini-flash-latest")
-        key_ok = bool(os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            try:
+                api_key = st.secrets.get("GOOGLE_API_KEY", "")
+            except (AttributeError, KeyError, FileNotFoundError):
+                api_key = ""
+        key_ok = bool(api_key and api_key.strip())
         st.caption("🔑 GOOGLE_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
+        if not key_ok:
+            st.warning("⚠️ Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
 
     st.divider()
     st.header("🧾 Export")
@@ -407,15 +447,22 @@ with chat_tab:
             st.markdown(user_msg)
         with st.chat_message("assistant"):
             with st.spinner("Thinking…"):
-                reply = call_llm(
-                    provider,
-                    model,
-                    build_system_prompt(),
-                    user_msg,
-                    history=st.session_state.chat_history[:-1],
-                )
-                st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                st.markdown(reply)
+                try:
+                    reply = call_llm(
+                        provider,
+                        model,
+                        build_system_prompt(),
+                        user_msg,
+                        history=st.session_state.chat_history[:-1],
+                    )
+                    st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    st.markdown(reply)
+                except Exception as e:
+                    error_msg = str(e)
+                    st.error(f"❌ Error: {error_msg}")
+                    # Remove the user message from history if the call failed
+                    if st.session_state.chat_history and st.session_state.chat_history[-1]["role"] == "user":
+                        st.session_state.chat_history.pop()
 
 # ---------- Generate Resume ----------
 with generate_tab:
