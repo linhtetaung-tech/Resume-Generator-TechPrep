@@ -48,7 +48,7 @@ if "profile" not in st.session_state:
         "summary": "",
         "education": [],  # list of {school, degree, start, end, details}
         "skills": [],     # list of strings
-        "experiences": [],# list of {title, org, start, end, bullets}
+        "experiences": [],  # list of {title, org, start, end, bullets}
         "projects": [],   # list of {name, url, start, end, bullets}
         "certs": []       # list of strings
     }
@@ -61,6 +61,7 @@ if "generated_html" not in st.session_state:
 PROVIDER_OPENAI = "OpenAI"
 PROVIDER_GEMINI = "Gemini"
 
+
 @st.cache_resource(show_spinner=False)
 def get_openai_client():
     try:
@@ -69,14 +70,26 @@ def get_openai_client():
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             try:
-                api_key = st.secrets.get("OPENAI_API_KEY", "")
-            except (AttributeError, KeyError, FileNotFoundError):
+                # Streamlit Cloud secrets can be accessed as dict or attribute
+                if hasattr(st, "secrets"):
+                    # Try dictionary access first (most common)
+                    try:
+                        api_key = st.secrets["OPENAI_API_KEY"]
+                    except (KeyError, TypeError):
+                        # Try .get() method
+                        try:
+                            api_key = st.secrets.get("OPENAI_API_KEY", "")
+                        except (AttributeError, TypeError):
+                            # Try attribute access
+                            api_key = getattr(st.secrets, "OPENAI_API_KEY", "")
+            except Exception:
                 api_key = ""
-        if not api_key or api_key.strip() == "":
+        if not api_key or (isinstance(api_key, str) and api_key.strip() == ""):
             return None
         return OpenAI(api_key=api_key)
     except Exception:
         return None
+
 
 @st.cache_resource(show_spinner=False)
 def get_gemini_client():
@@ -86,10 +99,21 @@ def get_gemini_client():
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             try:
-                api_key = st.secrets.get("GOOGLE_API_KEY", "")
-            except (AttributeError, KeyError, FileNotFoundError):
+                # Streamlit Cloud secrets can be accessed as dict or attribute
+                if hasattr(st, "secrets"):
+                    # Try dictionary access first (most common)
+                    try:
+                        api_key = st.secrets["GOOGLE_API_KEY"]
+                    except (KeyError, TypeError):
+                        # Try .get() method
+                        try:
+                            api_key = st.secrets.get("GOOGLE_API_KEY", "")
+                        except (AttributeError, TypeError):
+                            # Try attribute access
+                            api_key = getattr(st.secrets, "GOOGLE_API_KEY", "")
+            except Exception:
                 api_key = ""
-        if not api_key or api_key.strip() == "":
+        if not api_key or (isinstance(api_key, str) and api_key.strip() == ""):
             return None
         genai.configure(api_key=api_key)
         return genai
@@ -98,12 +122,14 @@ def get_gemini_client():
 
 # Simple wrapper to call chosen model
 
+
 def call_llm(provider, model, system_prompt, user_prompt, history=None):
     history = history or []
     if provider == PROVIDER_OPENAI:
         client = get_openai_client()
         if client is None:
-            raise RuntimeError("OpenAI client not available. Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
+            raise RuntimeError(
+                "OpenAI client not available. Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
         # Convert to Chat Completions
         messages = []
         if system_prompt:
@@ -113,42 +139,49 @@ def call_llm(provider, model, system_prompt, user_prompt, history=None):
                 messages.append({"role": m["role"], "content": m["content"]})
         messages.append({"role": "user", "content": user_prompt})
         try:
-            resp = client.chat.completions.create(model=model, messages=messages, temperature=0.7)
+            resp = client.chat.completions.create(
+                model=model, messages=messages, temperature=0.7)
             return resp.choices[0].message.content
         except Exception as e:
             error_msg = str(e)
             if "authentication" in error_msg.lower() or "api key" in error_msg.lower() or "invalid" in error_msg.lower():
-                raise RuntimeError("Authentication failed. Please check that your OPENAI_API_KEY in Streamlit Cloud secrets is valid and not expired.")
+                raise RuntimeError(
+                    "Authentication failed. Please check that your OPENAI_API_KEY in Streamlit Cloud secrets is valid and not expired.")
             raise
 
     elif provider == PROVIDER_GEMINI:
         genai = get_gemini_client()
         if genai is None:
-            raise RuntimeError("Gemini client not available. Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
+            raise RuntimeError(
+                "Gemini client not available. Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets).")
         # Build a single prompt (Gemini can accept system in content)
         try:
             model_obj = genai.GenerativeModel(model)
             # Convert history into parts
             conv = []
             if system_prompt:
-                conv.append({"role": "user", "parts": [f"SYSTEM:\n{system_prompt}"]})
+                conv.append({"role": "user", "parts": [
+                            f"SYSTEM:\n{system_prompt}"]})
             for m in history:
                 role = "user" if m["role"] == "user" else "model"
                 conv.append({"role": role, "parts": [m["content"]]})
             conv.append({"role": "user", "parts": [user_prompt]})
             chat = model_obj.start_chat(history=conv)
-            resp = chat.send_message("Please respond to the last user message only.")
+            resp = chat.send_message(
+                "Please respond to the last user message only.")
             return resp.text
         except Exception as e:
             error_msg = str(e)
             if "authentication" in error_msg.lower() or "api key" in error_msg.lower() or "invalid" in error_msg.lower():
-                raise RuntimeError("Authentication failed. Please check that your GOOGLE_API_KEY in Streamlit Cloud secrets is valid and not expired.")
+                raise RuntimeError(
+                    "Authentication failed. Please check that your GOOGLE_API_KEY in Streamlit Cloud secrets is valid and not expired.")
             raise
 
     else:
         raise ValueError("Unknown provider")
 
 # ---------- Prompts ----------
+
 
 def build_system_prompt():
     return dedent(
@@ -159,6 +192,7 @@ def build_system_prompt():
         Keep sentences concise. Output plain Markdown unless specifically asked for HTML.
         """
     ).strip()
+
 
 def build_resume_instruction(profile_json, style, sections):
     return dedent(
@@ -178,34 +212,82 @@ def build_resume_instruction(profile_json, style, sections):
         """
     ).strip()
 
+
 # ---------- UI: Sidebar ----------
 with st.sidebar:
     st.header("⚙️ Model Settings")
-    provider = st.radio("Provider", [PROVIDER_OPENAI, PROVIDER_GEMINI], index=0)
+    provider = st.radio(
+        "Provider", [PROVIDER_OPENAI, PROVIDER_GEMINI], index=0)
     if provider == PROVIDER_OPENAI:
         model = st.text_input("OpenAI Model", value="gpt-4o-mini")
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             try:
-                api_key = st.secrets.get("OPENAI_API_KEY", "")
-            except (AttributeError, KeyError, FileNotFoundError):
+                # Streamlit Cloud secrets can be accessed as dict or attribute
+                if hasattr(st, "secrets"):
+                    # Try dictionary access first (most common)
+                    try:
+                        api_key = st.secrets["OPENAI_API_KEY"]
+                    except (KeyError, TypeError):
+                        # Try .get() method
+                        try:
+                            api_key = st.secrets.get("OPENAI_API_KEY", "")
+                        except (AttributeError, TypeError):
+                            # Try attribute access
+                            api_key = getattr(st.secrets, "OPENAI_API_KEY", "")
+            except Exception:
                 api_key = ""
-        key_ok = bool(api_key and api_key.strip())
-        st.caption("🔑 OPENAI_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
+        key_ok = bool(api_key and isinstance(api_key, str) and api_key.strip())
+        st.caption("🔑 OPENAI_API_KEY " +
+                   ("✅ found" if key_ok else "❌ missing"))
         if not key_ok:
-            st.warning("⚠️ Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
+            st.warning(
+                "⚠️ Please add OPENAI_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
+            with st.expander("📖 How to add secrets on Streamlit Cloud"):
+                st.markdown("""
+                1. Click **"Manage app"** (bottom right of your app)
+                2. Go to **"Settings"** → **"Secrets"**
+                3. Add your key in this format:
+                ```toml
+                OPENAI_API_KEY = "sk-your-actual-key-here"
+                ```
+                4. Click **"Save"** and wait for the app to restart
+                """)
     else:
         model = st.text_input("Gemini Model", value="gemini-flash-latest")
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             try:
-                api_key = st.secrets.get("GOOGLE_API_KEY", "")
-            except (AttributeError, KeyError, FileNotFoundError):
+                # Streamlit Cloud secrets can be accessed as dict or attribute
+                if hasattr(st, "secrets"):
+                    # Try dictionary access first (most common)
+                    try:
+                        api_key = st.secrets["GOOGLE_API_KEY"]
+                    except (KeyError, TypeError):
+                        # Try .get() method
+                        try:
+                            api_key = st.secrets.get("GOOGLE_API_KEY", "")
+                        except (AttributeError, TypeError):
+                            # Try attribute access
+                            api_key = getattr(st.secrets, "GOOGLE_API_KEY", "")
+            except Exception:
                 api_key = ""
-        key_ok = bool(api_key and api_key.strip())
-        st.caption("🔑 GOOGLE_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
+        key_ok = bool(api_key and isinstance(api_key, str) and api_key.strip())
+        st.caption("🔑 GOOGLE_API_KEY " +
+                   ("✅ found" if key_ok else "❌ missing"))
         if not key_ok:
-            st.warning("⚠️ Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
+            st.warning(
+                "⚠️ Please add GOOGLE_API_KEY to Streamlit Cloud secrets (Manage app > Settings > Secrets) or environment variables.")
+            with st.expander("📖 How to add secrets on Streamlit Cloud"):
+                st.markdown("""
+                1. Click **"Manage app"** (bottom right of your app)
+                2. Go to **"Settings"** → **"Secrets"**
+                3. Add your key in this format:
+                ```toml
+                GOOGLE_API_KEY = "your-actual-key-here"
+                ```
+                4. Click **"Save"** and wait for the app to restart
+                """)
 
     st.divider()
     st.header("🧾 Export")
@@ -236,13 +318,17 @@ with profile_tab:
         prof["email"] = st.text_input("Email", value=prof.get("email", ""))
         prof["phone"] = st.text_input("Phone", value=prof.get("phone", ""))
     with c2:
-        prof["location"] = st.text_input("Location (City, State)", value=prof.get("location", ""))
-        links_text = st.text_area("Links (one per line)", value="\n".join(prof.get("links", [])))
-        prof["links"] = [l.strip() for l in links_text.splitlines() if l.strip()]
+        prof["location"] = st.text_input(
+            "Location (City, State)", value=prof.get("location", ""))
+        links_text = st.text_area(
+            "Links (one per line)", value="\n".join(prof.get("links", [])))
+        prof["links"] = [l.strip()
+                         for l in links_text.splitlines() if l.strip()]
 
     # ---------- Summary ----------
     st.subheader("Summary (optional)")
-    prof["summary"] = st.text_area("1–3 sentences", value=prof.get("summary", ""))
+    prof["summary"] = st.text_area(
+        "1–3 sentences", value=prof.get("summary", ""))
 
     # ---------- Skills ----------
     st.subheader("Skills (comma-separated)")
@@ -361,7 +447,8 @@ with profile_tab:
                 value="\n".join(proj.get("bullets", [])),
                 key=f"proj_bullets_{i}",
             )
-            proj["bullets"] = [b.strip() for b in bullets_text.splitlines() if b.strip()]
+            proj["bullets"] = [b.strip()
+                               for b in bullets_text.splitlines() if b.strip()]
     prof["projects"] = proj_list
 
     # ---------- Experience ----------
@@ -417,7 +504,8 @@ with profile_tab:
                 value="\n".join(exp.get("bullets", [])),
                 key=f"exp_bullets_{i}",
             )
-            exp["bullets"] = [b.strip() for b in bullets_text.splitlines() if b.strip()]
+            exp["bullets"] = [b.strip()
+                              for b in bullets_text.splitlines() if b.strip()]
     prof["experiences"] = exp_list
 
     # ---------- Certifications ----------
@@ -429,12 +517,14 @@ with profile_tab:
     )
     prof["certs"] = [c.strip() for c in certs_text.splitlines() if c.strip()]
 
-    st.success("Profile saved in session (not uploaded). Proceed to Chat or Generate.")
+    st.success(
+        "Profile saved in session (not uploaded). Proceed to Chat or Generate.")
 
 
 # ---------- Chat Coach ----------
 with chat_tab:
-    st.caption("Ask questions like: ‘How do I quantify my tutoring project?’ or paste rough bullets for improvement.")
+    st.caption(
+        "Ask questions like: ‘How do I quantify my tutoring project?’ or paste rough bullets for improvement.")
     # Display history
     for m in st.session_state.chat_history:
         with st.chat_message(m["role"]):
@@ -442,7 +532,8 @@ with chat_tab:
 
     user_msg = st.chat_input("Type your question or paste rough bullets…")
     if user_msg:
-        st.session_state.chat_history.append({"role": "user", "content": user_msg})
+        st.session_state.chat_history.append(
+            {"role": "user", "content": user_msg})
         with st.chat_message("user"):
             st.markdown(user_msg)
         with st.chat_message("assistant"):
@@ -455,7 +546,8 @@ with chat_tab:
                         user_msg,
                         history=st.session_state.chat_history[:-1],
                     )
-                    st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    st.session_state.chat_history.append(
+                        {"role": "assistant", "content": reply})
                     st.markdown(reply)
                 except Exception as e:
                     error_msg = str(e)
@@ -467,7 +559,8 @@ with chat_tab:
 # ---------- Generate Resume ----------
 with generate_tab:
     st.subheader("Generate from your profile + chat context")
-    style = st.selectbox("Style", ["standard ATS", "early-career student", "data/ML focus", "frontend focus"], index=0)
+    style = st.selectbox("Style", [
+                         "standard ATS", "early-career student", "data/ML focus", "frontend focus"], index=0)
 
     default_sections = [
         "Contact",
@@ -478,12 +571,15 @@ with generate_tab:
         "Projects",
         "Certifications"
     ]
-    sections = st.multiselect("Include sections", default_sections, default=default_sections)
+    sections = st.multiselect(
+        "Include sections", default_sections, default=default_sections)
 
     if st.button("🚀 Generate Resume (Markdown)", type="primary"):
         with st.spinner("Generating resume…"):
-            profile_json = json.dumps(st.session_state.profile, ensure_ascii=False)
-            instruction = build_resume_instruction(profile_json, style, sections)
+            profile_json = json.dumps(
+                st.session_state.profile, ensure_ascii=False)
+            instruction = build_resume_instruction(
+                profile_json, style, sections)
             try:
                 md_out = call_llm(
                     provider,
@@ -495,7 +591,8 @@ with generate_tab:
                 st.session_state.generated_md = md_out.strip()
                 # Build HTML either via markdown lib or minimal wrapper
                 if md_lib is not None:
-                    html_body = md_lib.markdown(st.session_state.generated_md, extensions=["tables", "fenced_code"])
+                    html_body = md_lib.markdown(st.session_state.generated_md, extensions=[
+                                                "tables", "fenced_code"])
                 else:
                     # Minimal fallback: wrap in <pre>
                     html_body = f"<pre>{st.session_state.generated_md}</pre>"
@@ -523,7 +620,8 @@ with preview_tab:
     left, right = st.columns(2)
     with left:
         st.markdown("**Markdown**")
-        st.code(st.session_state.generated_md or "(Nothing yet — generate first.)", language="markdown")
+        st.code(st.session_state.generated_md or "(Nothing yet — generate first.)",
+                language="markdown")
         st.download_button(
             "Download .md",
             data=st.session_state.generated_md,
@@ -534,7 +632,8 @@ with preview_tab:
     with right:
         st.markdown("**HTML** (auto-converted)")
         if st.session_state.generated_html:
-            st.components.v1.html(st.session_state.generated_html, height=600, scrolling=True)
+            st.components.v1.html(
+                st.session_state.generated_html, height=600, scrolling=True)
         st.download_button(
             "Download .html",
             data=st.session_state.generated_html,
