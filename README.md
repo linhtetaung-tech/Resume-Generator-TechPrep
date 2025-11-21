@@ -89,12 +89,14 @@ PDF Rendering: HTML → PDF via CSS styling
 
 State Management: Streamlit Session State
 
-🔑 Environment Variables
+## 🔑 Environment Variables
 
-Create a .streamlit/secrets.toml or set environment variables:
+Create a `.streamlit/secrets.toml` file or export them as environment variables:
 
+```toml
 OPENAI_API_KEY="your-openai-key"
 GOOGLE_API_KEY="your-google-genai-key"
+```
 
 💡 How It Works
 
