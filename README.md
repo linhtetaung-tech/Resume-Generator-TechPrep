@@ -27,7 +27,6 @@ Users can fill out:
 
 All through a clean, intuitive UI
 
-
 🎯 2. Job Description-Aware Resume Generation
 
 Users can paste any job description (JD).
@@ -44,7 +43,6 @@ The AI will:
 * Preserve factual accuracy (no hallucinated jobs)
 
 * This produces a more targeted and competitive resume for each job application.
-* 
 
 📄 3. Multi-Format Resume Output
 
@@ -93,7 +91,6 @@ Just provide your API keys in environment variables or Streamlit Secrets.
 * PDF Rendering: HTML → PDF via CSS styling
 
 * State Management: Streamlit Session State
-* 
 
 ## 🔑 Environment Variables
 
