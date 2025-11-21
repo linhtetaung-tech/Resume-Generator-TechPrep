@@ -65,7 +65,7 @@ PROVIDER_GEMINI = "Gemini"
 def get_openai_client():
     try:
         from openai import OpenAI
-        api_key = os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+        api_key = os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "$env:GOOGLE_API_KEY"))
         if not api_key:
             return None
         return OpenAI(api_key=api_key)
@@ -163,7 +163,7 @@ with st.sidebar:
         key_ok = bool(os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "")))
         st.caption("🔑 OPENAI_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
     else:
-        model = st.text_input("Gemini Model", value="gemini-1.5-flash")
+        model = st.text_input("Gemini Model", value="gemini-flash-latest")
         key_ok = bool(os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
         st.caption("🔑 GOOGLE_API_KEY " + ("✅ found" if key_ok else "❌ missing"))
 
@@ -187,6 +187,8 @@ profile_tab, chat_tab, generate_tab, preview_tab = st.tabs([
 # ---------- Profile Form ----------
 with profile_tab:
     prof = st.session_state.profile
+
+    # ---------- Contact ----------
     st.subheader("Contact")
     c1, c2 = st.columns(2)
     with c1:
@@ -198,47 +200,197 @@ with profile_tab:
         links_text = st.text_area("Links (one per line)", value="\n".join(prof.get("links", [])))
         prof["links"] = [l.strip() for l in links_text.splitlines() if l.strip()]
 
+    # ---------- Summary ----------
     st.subheader("Summary (optional)")
     prof["summary"] = st.text_area("1–3 sentences", value=prof.get("summary", ""))
 
+    # ---------- Skills ----------
     st.subheader("Skills (comma-separated)")
-    skills_text = st.text_input("e.g., Python, React, SQL, AWS", value=", ".join(prof.get("skills", [])))
+    skills_text = st.text_input(
+        "e.g., Python, React, SQL, AWS",
+        value=", ".join(prof.get("skills", [])),
+    )
     prof["skills"] = [s.strip() for s in skills_text.split(",") if s.strip()]
 
+    # ---------- Education ----------
     st.subheader("Education")
-    edu_json = st.text_area(
-        "List education objects (JSON array)",
-        value=json.dumps(prof.get("education", []), indent=2) or "[]",
-        height=180,
-        help="Example: [{\n  \"school\": \"Queens College\", \"degree\": \"B.S. in CS\", \"start\": \"2023\", \"end\": \"2026\", \"details\": \"GPA 3.8\"\n}]",
+    edu_list = prof.get("education", [])
+    num_edu = st.number_input(
+        "Number of education entries",
+        min_value=0,
+        max_value=10,
+        value=len(edu_list),
+        step=1,
+        key="num_edu",
     )
-    proj_json = st.text_area(
-        "Projects (JSON array)",
-        value=json.dumps(prof.get("projects", []), indent=2) or "[]",
-        height=180,
-        help="Example: [{\n  \"name\": \"Resume Builder\", \"url\": \"https://...\", \"start\": \"2025\", \"end\": \"2025\", \"bullets\": [\"Built with Streamlit\"]\n}]",
-    )
-    exp_json = st.text_area(
-        "Experience (JSON array)",
-        value=json.dumps(prof.get("experiences", []), indent=2) or "[]",
-        height=220,
-        help="Example: [{\n  \"title\": \"Software Intern\", \"org\": \"Company X\", \"start\": \"2024-06\", \"end\": \"2024-08\", \"bullets\": [\"Implemented feature X...\"]\n}]",
-    )
-    certs_text = st.text_area("Certifications (one per line)", value="\n".join(prof.get("certs", [])))
 
-    def try_load_json(txt, fallback):
-        try:
-            return json.loads(txt) if txt.strip() else fallback
-        except Exception as e:
-            st.error(f"Invalid JSON: {e}")
-            return fallback
+    # adjust the list length
+    while len(edu_list) < num_edu:
+        edu_list.append({
+            "school": "",
+            "degree": "",
+            "start": "",
+            "end": "",
+            "details": "",
+        })
+    while len(edu_list) > num_edu:
+        edu_list.pop()
 
-    prof["education"] = try_load_json(edu_json, prof["education"])
-    prof["projects"] = try_load_json(proj_json, prof["projects"])
-    prof["experiences"] = try_load_json(exp_json, prof["experiences"])
+    for i, edu in enumerate(edu_list):
+        with st.expander(f"Education #{i+1}", expanded=True):
+            edu["school"] = st.text_input(
+                "School",
+                value=edu.get("school", ""),
+                key=f"edu_school_{i}",
+            )
+            edu["degree"] = st.text_input(
+                "Degree (e.g. B.A. in Computer Science)",
+                value=edu.get("degree", ""),
+                key=f"edu_degree_{i}",
+            )
+            cols = st.columns(2)
+            with cols[0]:
+                edu["start"] = st.text_input(
+                    "Start (e.g. 2023)",
+                    value=edu.get("start", ""),
+                    key=f"edu_start_{i}",
+                )
+            with cols[1]:
+                edu["end"] = st.text_input(
+                    "End (or 'Present')",
+                    value=edu.get("end", ""),
+                    key=f"edu_end_{i}",
+                )
+            edu["details"] = st.text_area(
+                "Details (GPA, honors, relevant coursework…)",
+                value=edu.get("details", ""),
+                key=f"edu_details_{i}",
+            )
+    prof["education"] = edu_list
+
+    # ---------- Projects ----------
+    st.subheader("Projects")
+    proj_list = prof.get("projects", [])
+    num_proj = st.number_input(
+        "Number of projects",
+        min_value=0,
+        max_value=10,
+        value=len(proj_list),
+        step=1,
+        key="num_proj",
+    )
+
+    while len(proj_list) < num_proj:
+        proj_list.append({
+            "name": "",
+            "url": "",
+            "start": "",
+            "end": "",
+            "bullets": [],
+        })
+    while len(proj_list) > num_proj:
+        proj_list.pop()
+
+    for i, proj in enumerate(proj_list):
+        with st.expander(f"Project #{i+1}", expanded=True):
+            proj["name"] = st.text_input(
+                "Project name",
+                value=proj.get("name", ""),
+                key=f"proj_name_{i}",
+            )
+            proj["url"] = st.text_input(
+                "URL (optional)",
+                value=proj.get("url", ""),
+                key=f"proj_url_{i}",
+            )
+            cols = st.columns(2)
+            with cols[0]:
+                proj["start"] = st.text_input(
+                    "Start",
+                    value=proj.get("start", ""),
+                    key=f"proj_start_{i}",
+                )
+            with cols[1]:
+                proj["end"] = st.text_input(
+                    "End",
+                    value=proj.get("end", ""),
+                    key=f"proj_end_{i}",
+                )
+            bullets_text = st.text_area(
+                "Bullets (one per line；write down your notes，AI will edit for you)",
+                value="\n".join(proj.get("bullets", [])),
+                key=f"proj_bullets_{i}",
+            )
+            proj["bullets"] = [b.strip() for b in bullets_text.splitlines() if b.strip()]
+    prof["projects"] = proj_list
+
+    # ---------- Experience ----------
+    st.subheader("Experience")
+    exp_list = prof.get("experiences", [])
+    num_exp = st.number_input(
+        "Number of experience entries",
+        min_value=0,
+        max_value=10,
+        value=len(exp_list),
+        step=1,
+        key="num_exp",
+    )
+
+    while len(exp_list) < num_exp:
+        exp_list.append({
+            "title": "",
+            "org": "",
+            "start": "",
+            "end": "",
+            "bullets": [],
+        })
+    while len(exp_list) > num_exp:
+        exp_list.pop()
+
+    for i, exp in enumerate(exp_list):
+        with st.expander(f"Experience #{i+1}", expanded=True):
+            exp["title"] = st.text_input(
+                "Title",
+                value=exp.get("title", ""),
+                key=f"exp_title_{i}",
+            )
+            exp["org"] = st.text_input(
+                "Company / Organization",
+                value=exp.get("org", ""),
+                key=f"exp_org_{i}",
+            )
+            cols = st.columns(2)
+            with cols[0]:
+                exp["start"] = st.text_input(
+                    "Start",
+                    value=exp.get("start", ""),
+                    key=f"exp_start_{i}",
+                )
+            with cols[1]:
+                exp["end"] = st.text_input(
+                    "End",
+                    value=exp.get("end", ""),
+                    key=f"exp_end_{i}",
+                )
+            bullets_text = st.text_area(
+                "Bullets (one per line；AI will help you to make it as the professional bullets)",
+                value="\n".join(exp.get("bullets", [])),
+                key=f"exp_bullets_{i}",
+            )
+            exp["bullets"] = [b.strip() for b in bullets_text.splitlines() if b.strip()]
+    prof["experiences"] = exp_list
+
+    # ---------- Certifications ----------
+    st.subheader("Certifications (one per line)")
+    certs_text = st.text_area(
+        "",
+        value="\n".join(prof.get("certs", [])),
+        key="certs_text",
+    )
     prof["certs"] = [c.strip() for c in certs_text.splitlines() if c.strip()]
 
     st.success("Profile saved in session (not uploaded). Proceed to Chat or Generate.")
+
 
 # ---------- Chat Coach ----------
 with chat_tab:
