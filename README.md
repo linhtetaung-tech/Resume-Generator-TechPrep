@@ -5,9 +5,9 @@ Generate ATS-optimized, job-tailored resumes using your profile and job descript
 
 This project is a Streamlit-based web application that helps job seekers generate high-quality, professional resumes using AI. Instead of manually writing JSON, users can fill out simple forms for their profile, education, projects, and experience. By combining this information with an optional job description, the app uses LLMs (OpenAI or Gemini) to generate a polished, tailored resume in Markdown, HTML, and PDF formats.
 
-🚀 Features
+## 🚀 Features
 
-✨ 1. Form-based Profile Input
+### ✨ 1. Form-based Profile Input
 
 Users can fill out:
 
@@ -27,7 +27,7 @@ Users can fill out:
 
 All through a clean, intuitive UI
 
-🎯 2. Job Description-Aware Resume Generation
+### 🎯 2. Job Description-Aware Resume Generation
 
 Users can paste any job description (JD).
 The AI will:
@@ -44,7 +44,7 @@ The AI will:
 
 * This produces a more targeted and competitive resume for each job application.
 
-📄 3. Multi-Format Resume Output
+### 📄 3. Multi-Format Resume Output
 
 The app can export resumes in:
 
@@ -57,7 +57,7 @@ The app can export resumes in:
 Perfect for uploading to job portals or sharing as attachments.
 
 
-🧠 4. Chat-Based Resume Coaching
+### 🧠 4. Chat-Based Resume Coaching
 
 A built-in AI chat allows users to:
 
@@ -80,7 +80,7 @@ You can choose between:
 Just provide your API keys in environment variables or Streamlit Secrets.
 
 
-🛠️ Tech Stack
+### 🛠️ Tech Stack
 
 * Frontend/UI: Streamlit
 
@@ -92,7 +92,7 @@ Just provide your API keys in environment variables or Streamlit Secrets.
 
 * State Management: Streamlit Session State
 
-## 🔑 Environment Variables
+### 🔑 Environment Variables
 
 Create a `.streamlit/secrets.toml` file or export them as environment variables:
 
@@ -101,7 +101,7 @@ OPENAI_API_KEY="your-openai-key"
 GOOGLE_API_KEY="your-google-genai-key"
 ```
 
-💡 How It Works
+### 💡 How It Works
 
 User fills out profile info through interactive forms.
 
@@ -118,7 +118,7 @@ App renders output in Markdown, HTML, and PDF.
 User can download the final resume or refine further via chat.
 
 
-🎯 Project Goals
+### 🎯 Project Goals
 
 This project aims to:
 
@@ -135,7 +135,7 @@ This project aims to:
 * Empower students and early-career developers during their job search
   
 
-📄 License
+### 📄 License
 
 MIT License.
 
