@@ -10,19 +10,19 @@ This project is a Streamlit-based web application that helps job seekers generat
 
 Users can fill out:
 
-*Contact information
+* Contact information
 
-*Summary
+* Summary
 
-*Skills
+* Skills
 
-*Education
+* Education
 
-*Projects
+* Projects
 
-*Experience
+* Experience
 
-*Certifications
+* Certifications
 
 All through a clean, intuitive UI
 
@@ -31,27 +31,27 @@ All through a clean, intuitive UI
 Users can paste any job description (JD).
 The AI will:
 
-Extract required skills & keywords
+* Extract required skills & keywords
 
-Reorder or emphasize relevant experience
+* Reorder or emphasize relevant experience
 
-Rewrite bullets using strong action verbs
+* Rewrite bullets using strong action verbs
 
-Tailor the summary & skills to match the role
+* Tailor the summary & skills to match the role
 
-Preserve factual accuracy (no hallucinated jobs)
+* Preserve factual accuracy (no hallucinated jobs)
 
-This produces a more targeted and competitive resume for each job application.
+* This produces a more targeted and competitive resume for each job application.
 
 📄 3. Multi-Format Resume Output
 
 The app can export resumes in:
 
-Markdown
+* Markdown
 
-HTML
+* HTML
 
-PDF (using a clean, professional template)
+* PDF (using a clean, professional template)
 
 Perfect for uploading to job portals or sharing as attachments.
 
@@ -59,35 +59,35 @@ Perfect for uploading to job portals or sharing as attachments.
 
 A built-in AI chat allows users to:
 
-Improve bullet points
+* Improve bullet points
 
-Clarify project descriptions
+* Clarify project descriptions
 
-Rewrite experience more professionally
+* Rewrite experience more professionally
 
-Get resume tips and feedback
+* Get resume tips and feedback
 
 🔌 5. Dual LLM Provider Support
 
 You can choose between:
 
-OpenAI (GPT-4o / GPT-4o-mini / others)
+* OpenAI (GPT-4o / GPT-4o-mini / others)
 
-Google Gemini (gemini-flash-latest / others)
+* Google Gemini (gemini-flash-latest / others)
 
 Just provide your API keys in environment variables or Streamlit Secrets.
 
 🛠️ Tech Stack
 
-Frontend/UI: Streamlit
+* Frontend/UI: Streamlit
 
-Backend: Python
+* ackend: Python
 
-AI Providers: OpenAI, Google Gemini
+* AI Providers: OpenAI, Google Gemini
 
-PDF Rendering: HTML → PDF via CSS styling
+* PDF Rendering: HTML → PDF via CSS styling
 
-State Management: Streamlit Session State
+* State Management: Streamlit Session State
 
 ## 🔑 Environment Variables
 
@@ -118,17 +118,17 @@ User can download the final resume or refine further via chat.
 
 This project aims to:
 
-Help applicants create stronger, more competitive resumes
+* Help applicants create stronger, more competitive resumes
 
-Automate resume tailoring for each job application
+* Automate resume tailoring for each job application
 
-Simplify editing by removing complex JSON input
+* Simplify editing by removing complex JSON input
 
-Provide clean, professional resume templates
+* Provide clean, professional resume templates
 
-Offer AI-powered writing and improvement suggestions
+* Offer AI-powered writing and improvement suggestions
 
-Empower students and early-career developers during their job search
+* Empower students and early-career developers during their job search
 
 📄 License
 
